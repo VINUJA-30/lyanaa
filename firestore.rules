@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields: uid, name, email, age, emergency_contact, role
+    //
+    // Collection: sensor_data
+    // Fields: user_id, timestamp, heart_rate, steps, accel_x, accel_y, accel_z, activity, is_anomaly
+    //
+    // Collection: alerts
+    // Fields: user_id, timestamp, type, severity, message, status
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "2317054@nec.edu.in" && request.auth.token.email_verified == true));
+    }
+
+    function isCaregiver() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'caregiver';
+    }
+
+    // Domain Validators
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'name', 'role']) &&
+             data.uid is string && data.name is string &&
+             data.role in ['elderly', 'caregiver', 'admin'];
+    }
+
+    function isValidSensorData(data) {
+      return data.keys().hasAll(['user_id', 'timestamp', 'heart_rate', 'steps', 'activity']) &&
+             data.user_id is string && data.heart_rate is number &&
+             data.steps is number && data.activity in ['Walking', 'Sitting', 'Sleeping', 'Fall'];
+    }
+
+    function isValidAlert(data) {
+      return data.keys().hasAll(['user_id', 'timestamp', 'type', 'severity', 'message', 'status']) &&
+             data.user_id is string && data.type is string &&
+             data.severity in ['low', 'medium', 'high'] &&
+             data.status in ['active', 'resolved'];
+    }
+
+    // Rules
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin() || isCaregiver());
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin());
+    }
+
+    match /sensor_data/{dataId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.user_id) || isAdmin() || isCaregiver());
+      allow create: if isAuthenticated() && isValidSensorData(request.resource.data);
+      allow update: if isAuthenticated() && isAdmin();
+    }
+
+    match /alerts/{alertId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.user_id) || isAdmin() || isCaregiver());
+      allow create: if isAuthenticated() && isValidAlert(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || isCaregiver());
+    }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "entities": {
+    "SensorData": {
+      "title": "SensorData",
+      "description": "Raw sensor data from the smartwatch.",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "heart_rate": { "type": "number" },
+        "steps": { "type": "number" },
+        "accel_x": { "type": "number" },
+        "accel_y": { "type": "number" },
+        "accel_z": { "type": "number" },
+        "activity": { "type": "string", "enum": ["Walking", "Sitting", "Sleeping", "Fall"] },
+        "is_anomaly": { "type": "boolean" }
+      },
+      "required": ["user_id", "timestamp", "heart_rate", "steps", "activity"]
+    },
+    "Alert": {
+      "title": "Alert",
+      "description": "Triggered alerts for health or safety issues.",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["Fall Detected", "High Heart Rate", "No Movement", "Anomaly Detected"] },
+        "severity": { "type": "string", "enum": ["low", "medium", "high"] },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "resolved"] }
+      },
+      "required": ["user_id", "timestamp", "type", "severity", "message", "status"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Elderly user profile.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "age": { "type": "number" },
+        "emergency_contact": { "type": "string" },
+        "role": { "type": "string", "enum": ["elderly", "caregiver", "admin"] }
+      },
+      "required": ["uid", "name", "role"]
+    }
+  },
+  "firestore": {
+    "/sensor_data/{dataId}": {
+      "schema": "SensorData",
+      "description": "Collection of raw sensor data points."
+    },
+    "/alerts/{alertId}": {
+      "schema": "Alert",
+      "description": "Collection of triggered alerts."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection of user profiles."
+    }
+  }
+}
